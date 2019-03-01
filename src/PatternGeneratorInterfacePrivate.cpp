@@ -1324,7 +1324,7 @@ namespace PatternGeneratorJRL {
                                            finalCOMState,
                                            LeftFootPosition,
                                            RightFootPosition);
-    return m_Running;
+    return true;
   }
 
   bool PatternGeneratorInterfacePrivate::RunOneStepOfTheControlLoop(FootAbsolutePosition &LeftFootPosition,
@@ -1350,7 +1350,8 @@ namespace PatternGeneratorJRL {
     bzero(&ZMPRefPos,sizeof(ZMPPosition));
     ZMPRefPos.px = ZMPTarget(0);
     ZMPRefPos.py = ZMPTarget(1);
-    return m_Running;
+//    return m_Running;
+      return true ;
   }
 
 
@@ -1371,7 +1372,8 @@ namespace PatternGeneratorJRL {
                                            LeftFootPosition,
                                            RightFootPosition);
     finalCOMPosition = aCOMState;
-    return m_Running;
+//    return m_Running;
+    return true;
   }
 
   bool PatternGeneratorInterfacePrivate::RunOneStepOfTheControlLoop(Eigen::VectorXd & CurrentConfiguration,
@@ -1388,14 +1390,16 @@ namespace PatternGeneratorJRL {
         (m_GlobalStrategyManager->EndOfMotion()<0))
     {
 
-      ODEBUG(" m_ShoulBeRunning " << m_ShouldBeRunning << endl <<
+      ODEBUG3(" m_ShoulBeRunning " << m_ShouldBeRunning << endl <<
              " m_ZMPPositions " << m_ZMPPositions.size() << endl <<
              " 2*m_NL+1 " << 2*m_NL+1 << endl);
-      ODEBUG("m_ShouldBeRunning : "<< m_ShouldBeRunning << endl <<
+      ODEBUG3("m_ShouldBeRunning : "<< m_ShouldBeRunning << endl <<
              "m_GlobalStrategyManager: " << m_GlobalStrategyManager->EndOfMotion());
 
-      m_Running = false;
-      return m_Running;//Andremize
+      /*m_Running = false;
+      return m_Running;//Andremize*/
+      m_Running = true;
+      return true;
     }
     ODEBUG("Internal clock:" << m_InternalClock);
 
@@ -1663,7 +1667,8 @@ namespace PatternGeneratorJRL {
     // to be done only when the robot has finish a motion.
     UpdateAbsolutePosition(UpdateAbsMotionOrNot);
     ODEBUG("Return true");
-    return m_Running;
+   // return m_Running;
+    return true ;
   }
 
 
