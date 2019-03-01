@@ -31,6 +31,7 @@
 #include <string>
 #include <map>
 #include <cmath>
+#include <fstream>
 
 #include <jrl/walkgen/config_private.hh>
 #include <jrl/walkgen/pgtypes.hh>
@@ -38,6 +39,16 @@
 #include "CommonTools.hh"
 #include "TestObject.hh"
 #include "MotionGeneration/ComAndFootRealizationByGeometry.hh"
+
+//socket communication
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <fcntl.h>
+#define PORT 8383
+#define PORT2 65432
 
 using namespace std;
 using namespace PatternGeneratorJRL;
@@ -67,6 +78,10 @@ private:
   std::vector<se3::JointIndex> m_rightArm ;
   se3::JointIndex m_leftGripper  ;
   se3::JointIndex m_rightGripper ;
+  ifstream m_velocitiesFile;
+  unsigned int m_lastIter;
+  int sock = 0;
+  int sock2=0;
 
 public:
   TestNaveau2015(int argc, char *argv[], string &aString, int TestProfile):
@@ -87,6 +102,63 @@ public:
     m_rightArm.clear();
     m_leftGripper  = 0 ;
     m_rightGripper = 0 ;
+    m_velocitiesFile.open("/home/mimparat/cmd_ve.txt");
+    m_lastIter = 0;
+
+    struct sockaddr_in serv_addr;
+
+       if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+       {
+           printf("\n Socket creation error \n");
+
+       }
+
+       memset(&serv_addr, '0', sizeof(serv_addr));
+
+       serv_addr.sin_family = AF_INET;
+       serv_addr.sin_port = htons(PORT);
+
+       // Convert IPv4 and IPv6 addresses from text to binary form
+       if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)
+       {
+           printf("\nInvalid address/ Address not supported \n");
+
+       }
+
+       if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+       {
+           printf("\nConnection Failed \n");
+
+       }
+       fcntl(sock, F_SETFL, O_NONBLOCK);
+
+//socket test-plot
+struct sockaddr_in serv_addr2;
+
+              if ((sock2 = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+              {
+                  printf("\n Socket creation error \n");
+
+              }
+
+              memset(&serv_addr2, '0', sizeof(serv_addr2));
+
+              serv_addr2.sin_family = AF_INET;
+              serv_addr2.sin_port = htons(PORT2);
+
+              // Convert IPv4 and IPv6 addresses from text to binary form
+              if(inet_pton(AF_INET, "127.0.0.1", &serv_addr2.sin_addr)<=0)
+              {
+                  printf("\nInvalid address/ Address not supported \n");
+
+              }
+
+              if (connect(sock2, (struct sockaddr *)&serv_addr2, sizeof(serv_addr2)) < 0)
+              {
+                  printf("\nConnection Failed \n");
+
+              }
+              fcntl(sock2, F_SETFL, O_NONBLOCK);
   }
 
   ~TestNaveau2015()
@@ -101,6 +173,7 @@ public:
       delete SPM_ ;
       SPM_ = NULL;
     }
+    m_velocitiesFile.close();
   }
 
   typedef void (TestObject:: * localeventHandler_t)(PatternGeneratorInterface &);
@@ -510,17 +583,23 @@ protected:
           << filterprecision(zmpmb[0]) << " "                            // 45
           << filterprecision(zmpmb[1]) << " "                            // 46
           << filterprecision(zmpmb[2]) << " "                           ;// 47
+
+      double confs[36];
       for(unsigned int k = 0 ; k < m_conf.size() ; k++){ // 48-53 -> 54-83
         aof << filterprecision( m_conf(k) ) << " "  ;
+        confs[k] =  filterprecision( m_conf(k) );
       }
+
+
       for(unsigned int k = 0 ; k < m_vel.size() ; k++){ // 84-89 -> 90-118
-        aof << filterprecision( m_vel(k) ) << " "  ;
+        aof << filterprecision( m_vel(k) ) << " ";
       }
       for(unsigned int k = 0 ; k < m_acc.size() ; k++){ // 119-125 -> 125-155
         aof << filterprecision( m_acc(k) ) << " "  ;
       }
       aof << endl;
       aof.close();
+      send(sock2 , confs, sizeof(confs) , 0 );
     }
   }
 
@@ -616,7 +695,7 @@ protected:
 
   void generateEventOnLineWalking()
   {
-    #define localNbOfEvents 20
+/*    #define localNbOfEvents 20
     struct localEvent events [localNbOfEvents] =
     {
       {1*200,&TestObject::walkForwardSlow},
@@ -636,7 +715,40 @@ protected:
         ODEBUG3("********* GENERATE EVENT EMS ***********");
         (this->*(events[i].Handler))(*m_PGI);
       }
-    }
+    }*/
+
+
+/*    if (m_OneStep.NbOfIt - m_lastIter >= 25){
+    	//Reqd one velocity line
+		//  0.0001 0.0 0.0");
+		std::string vel, cmd;
+		getline(m_velocitiesFile, vel);
+		cmd = ":setVelReference " + vel;
+
+		std::istringstream strm2(cmd);
+		m_PGI->ParseCmd(strm2);
+		ODEBUG3("********* Change Speed ***********");
+		ODEBUG3(vel);
+		m_lastIter = m_OneStep.NbOfIt;
+    }*/
+
+	float vel[3];
+
+	int valread = read( sock , vel, sizeof(vel));
+	if (valread > 0){
+		std::ostringstream ss;
+		ss << ":setVelReference " << vel[0] << " " << vel[1] << " " << vel[2];
+		std::string cmd(ss.str());
+		std::istringstream strm2(cmd);
+		m_PGI->ParseCmd(strm2);
+		ODEBUG3("********* Change Speed ***********");
+		ODEBUG3(cmd);
+		m_lastIter = m_OneStep.NbOfIt;
+		//printf("%f %f %f\n",vel[0], vel[1], vel[2] );
+	}
+
+
+
 //    if(m_OneStep.NbOfIt>=0*200)
 //    {
 //      ostringstream oss ;
@@ -647,7 +759,7 @@ protected:
 //      istringstream strm (oss.str()) ;
 //      m_PGI->ParseCmd(strm);
 //    }
-  }
+ }
 
   void generateEvent()
   {

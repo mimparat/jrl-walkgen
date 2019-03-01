@@ -546,7 +546,7 @@ namespace PatternGeneratorJRL
         aof << filterprecision(m_OneStep.NbOfIt*0.005 ) << " "                     // 1
             << filterprecision(m_OneStep.finalCOMPosition.x[0] ) << " "            // 2
             << filterprecision(m_OneStep.finalCOMPosition.y[0] ) << " "            // 3
-            << filterprecision(m_OneStep.finalCOMPosition.z[0] ) << " "            // 4
+           << filterprecision(m_OneStep.finalCOMPosition.z[0] ) << " "            // 4
             << filterprecision(m_OneStep.finalCOMPosition.yaw[0] ) << " "          // 5
             << filterprecision(m_OneStep.finalCOMPosition.x[1] ) << " "            // 6
             << filterprecision(m_OneStep.finalCOMPosition.y[1] ) << " "            // 7
@@ -869,6 +869,8 @@ namespace PatternGeneratorJRL
           {
             cerr << "Nothing to dump after " << m_OneStep.NbOfIt << endl;
           }
+/*          os << endl << "iteration: " << m_OneStep.NbOfIt << endl;
+          os << endl << "m_PGIInterface: " << m_PGIInterface << endl;*/
 
         }
 
